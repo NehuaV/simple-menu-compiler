@@ -16,7 +16,6 @@
     "@babel/register": "^7.29.3",
     "esbuild": "^0.28.0",
     "flag-icons": "^7.5.0",
-    "localforage": "^1.10.0",
     "preact": "^10.29.2",
     "preact-render-to-string": "^6.7.0"
   },

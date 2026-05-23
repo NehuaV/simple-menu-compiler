@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef } from "preact/hooks";
-import localforage from "localforage";
 
 // ── Locale → ISO 3166-1 alpha-2 country code for flag-icons ──────────────────
 // Maps language codes (BCP 47-ish) to the country whose flag visually represents
@@ -66,58 +65,74 @@ export function languageDisplayName(code, inLocale = code) {
 	return code.toUpperCase();
 }
 
-// ── Image cache (IndexedDB via localforage, 5-minutes TTL) ──────────────────────
+// ── Image cache (Cache API, 5-minute TTL) ────────────────────────────────────
+// Uses the browser's native Cache API instead of IndexedDB/localforage. Stores
+// the original fetch Response (with a custom timestamp header) so we can hand
+// the bytes back as a blob URL on repeat visits without re-hitting the network.
 const IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+const IMAGE_CACHE_NAME = "menu-compiler-images-v1";
+const TIMESTAMP_HEADER = "x-cached-at";
 
-let imageStore = null;
-/**
- * Get the image store
- * @returns {LocalForage | null}
- */
-function getImageStore() {
-	if (imageStore) return imageStore;
-	if (typeof window === "undefined") return null;
-	try {
-		imageStore = localforage.createInstance({
-			name: "menu-compiler",
-			storeName: "images",
-			description: "Cached menu images (TTL 5 minutes)",
-		});
-	} catch {
-		imageStore = null;
-	}
-	return imageStore;
+function hasCacheApi() {
+	return typeof window !== "undefined" && "caches" in window;
 }
 
 /**
- * Get a cached blob URL
- * @param {string} url - The URL to get a cached blob URL for
- * @returns {string | null}
+ * Open (or create) the image cache.
+ * @returns {Promise<Cache | null>}
  */
-async function getCachedBlobUrl(url) {
-	const store = getImageStore();
-	if (!store || !url) return null;
+async function getImageCache() {
+	if (!hasCacheApi()) return null;
 	try {
-		const entry = await store.getItem(url);
-		if (!entry) return null;
-		if (Date.now() - entry.timestamp > IMAGE_CACHE_TTL_MS) {
-			store.removeItem(url).catch(() => {});
-			return null;
-		}
-		return URL.createObjectURL(entry.blob);
+		return await caches.open(IMAGE_CACHE_NAME);
 	} catch {
 		return null;
 	}
 }
 
+/**
+ * Return a blob URL for a fresh cached copy of `url`, or null if missing/stale.
+ * Stale entries are evicted as a side effect.
+ * @param {string} url
+ * @returns {Promise<string | null>}
+ */
+async function getCachedBlobUrl(url) {
+	const cache = await getImageCache();
+	if (!cache || !url) return null;
+	try {
+		const res = await cache.match(url);
+		if (!res) return null;
+		const ts = Number(res.headers.get(TIMESTAMP_HEADER));
+		if (!ts || Date.now() - ts > IMAGE_CACHE_TTL_MS) {
+			cache.delete(url).catch(() => {});
+			return null;
+		}
+		const blob = await res.blob();
+		return URL.createObjectURL(blob);
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Fetch `url` and store it in the image cache, stamped with the current time.
+ * @param {string} url
+ * @returns {Promise<void>}
+ */
 async function cacheImage(url) {
-	const store = getImageStore();
-	if (!store || !url) return;
+	const cache = await getImageCache();
+	if (!cache || !url) return;
 	try {
 		const res = await fetch(url, { mode: "cors", credentials: "omit" });
 		if (!res.ok) return;
 		const blob = await res.blob();
-		await store.setItem(url, { blob, timestamp: Date.now() });
+		const stamped = new Response(blob, {
+			headers: {
+				"content-type": blob.type || "application/octet-stream",
+				[TIMESTAMP_HEADER]: String(Date.now()),
+			},
+		});
+		await cache.put(url, stamped);
 	} catch {}
 }
 
@@ -170,11 +185,11 @@ function normalizeImage(image) {
 // image once it has finished loading. Both `<img>` tags are absolutely
 // positioned and fill their (relatively positioned) parent container.
 //
-// Caches images in IndexedDB (via localforage) with an 8-hour TTL:
+// Caches images via the Cache API with a 5-minute TTL:
 //  - First visit:  render uses the original URL; we fetch a copy in the
-//                  background and store it in IndexedDB.
+//                  background and store it in the Cache API.
 //  - Repeat visit: we swap the `src` to a blob URL produced from the cached
-//                  bytes, so the browser never hits the network.
+//                  response body, so the browser never hits the network.
 function ProgressiveImage({ src, placeholder, alt, eager = false }) {
 	const [resolvedSrc, setResolvedSrc] = useState(src);
 	const [fromCache, setFromCache] = useState(false);
