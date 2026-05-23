@@ -683,7 +683,7 @@ export default function MenuApp({
 	const sectionEntries = menuData.filter((d) => d.type === "section");
 
 	if (sectionEntries.length > 0) {
-		sectionEntries.forEach((sec) => {
+		for (const sec of sectionEntries) {
 			const secName = localize(sec.name, locale);
 			const secItems = filtered.filter(
 				(it) => it.section === sec.id || it.sectionId === sec.id,
@@ -695,7 +695,7 @@ export default function MenuApp({
 					items: secItems,
 				});
 			}
-		});
+		}
 		const orphans = filtered.filter(
 			(it) =>
 				!sectionEntries.some(
@@ -707,11 +707,12 @@ export default function MenuApp({
 		}
 	} else {
 		const catMap = new Map();
-		filtered.forEach((it) => {
+
+		for (const it of filtered) {
 			const cat = localize(it.category, locale) || "Menu";
 			if (!catMap.has(cat)) catMap.set(cat, []);
 			catMap.get(cat).push(it);
-		});
+		}
 
 		for (const [cat, its] of catMap) {
 			sections.push({
