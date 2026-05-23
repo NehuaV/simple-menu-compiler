@@ -711,27 +711,51 @@ export default function MenuApp({
 		if (typeof window === "undefined") return;
 		if (sections.length < 2) return;
 
-		const observer = new IntersectionObserver(
-			(entries) => {
-				const visible = entries
-					.filter((e) => e.isIntersecting)
-					.sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-				if (visible[0]) {
-					setActiveId(visible[0].target.id);
+		// Active-section detection: do NOT update while the page is actively
+		// scrolling. Only after the scroll has been idle for SCROLL_IDLE_MS do we
+		// recompute which section is currently in focus. This avoids the active
+		// pill flickering through every section the viewport sweeps past during a
+		// fast or programmatic (smooth) scroll.
+		const SCROLL_IDLE_MS = 120;
+		// Reference line: a horizontal line ~30% from the top of the viewport.
+		// The active section is the one whose top has most recently crossed
+		// above this line.
+		const referenceY = () => Math.round(window.innerHeight * 0.3);
+
+		let idleTimeout = null;
+
+		const computeActive = () => {
+			const refY = referenceY();
+			let bestId = sections[0]?.id ?? null;
+			let bestTop = -Infinity;
+			for (const sec of sections) {
+				const el = sectionRefs.current[sec.id];
+				if (!el) continue;
+				const top = el.getBoundingClientRect().top;
+				if (top <= refY && top > bestTop) {
+					bestTop = top;
+					bestId = sec.id;
 				}
-			},
-			{
-				rootMargin: "-30% 0px -60% 0px",
-				threshold: [0, 0.25, 0.5, 0.75, 1],
-			},
-		);
+			}
+			if (bestId) setActiveId(bestId);
+		};
 
-		sections.forEach((sec) => {
-			const el = sectionRefs.current[sec.id];
-			if (el) observer.observe(el);
-		});
+		const onScroll = () => {
+			if (idleTimeout) clearTimeout(idleTimeout);
+			idleTimeout = setTimeout(computeActive, SCROLL_IDLE_MS);
+		};
 
-		return () => observer.disconnect();
+		// Initial compute (for the section visible on load).
+		computeActive();
+
+		window.addEventListener("scroll", onScroll, { passive: true });
+		window.addEventListener("resize", onScroll, { passive: true });
+
+		return () => {
+			window.removeEventListener("scroll", onScroll);
+			window.removeEventListener("resize", onScroll);
+			if (idleTimeout) clearTimeout(idleTimeout);
+		};
 	}, [sections.map((s) => s.id).join("|")]);
 
 	const jumpTo = useCallback((id) => {
