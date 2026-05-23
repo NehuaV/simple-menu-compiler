@@ -1,6 +1,6 @@
 # menu-compiler
 
-Compile a restaurant menu JSON file into a **single, self-contained, mobile-friendly HTML page**. SSR'd with Preact, styled with Tailwind, and packed with niceties: progressive image loading with IndexedDB caching, a flag-icon language dropdown, a sticky section nav bar, search, and item-detail modals — all embedded in one `.html` file you can host anywhere or email as an attachment.
+Compile a restaurant menu JSON file into a **mobile-friendly static site**. SSR'd with Preact, styled with Tailwind, and packed with niceties: progressive image loading with IndexedDB caching, a flag-icon language dropdown, a sticky section nav bar, search, and item-detail modals. Each compile emits a small HTML page plus its own `.css` and `.js` siblings — drop them on any static host.
 
 ## Quick start
 
@@ -25,15 +25,24 @@ menu-compiler/
 
 ## Build pipeline
 
-The compiler produces a single self-contained HTML file:
+The compiler produces three sibling files derived from the output basename — for `-o dist/index.html` you get:
+
+```
+dist/
+├── index.html     # SSR markup + inline menu data + <link>/<script> refs
+├── index.css      # Tailwind bundle + flag SVGs (data: URLs)
+└── index.js       # Preact + localforage + the app, bundled with esbuild
+```
+
+Steps:
 
 1. **SSR** — `preact-render-to-string` renders `MenuApp` to an HTML string using your menu data and chosen locale.
-2. **Client bundle** — `esbuild` bundles `client.jsx` and Preact into an inline `<script>` (no separate asset files). The bundle uses Preact's JSX runtime (`jsxImportSource: "preact"`).
+2. **Client bundle** — `esbuild` bundles `client.jsx`, Preact, localforage, and your component into a single JS file. The bundle uses Preact's JSX runtime (`jsxImportSource: "preact"`).
 3. **Styles** — PostCSS runs Tailwind against the JSX sources and the rendered HTML, producing a minimal CSS bundle with only the utilities actually used. The Tailwind theme is configured inline in `compiler.js`.
-4. **Flags** — Only the country flags for locales present in your menu data are read from `node_modules/flag-icons/flags/4x3/` and embedded as `data:image/svg+xml` background-image rules.
-5. **Assembly** — SSR markup, generated CSS, embedded menu JSON, and the script are concatenated into one `.html` file.
+4. **Flags** — Only the country flags for locales present in your menu data are read from `node_modules/flag-icons/flags/4x3/` and embedded as `data:image/svg+xml` background-image rules inside the CSS bundle.
+5. **Assembly** — The HTML references the CSS via `<link rel="stylesheet">` and the JS via `<script src defer>`. Per-menu data (`__MENU_DATA__`, `__INITIAL_LOCALE__`, `__RESTAURANT_NAME__`) stays inline in a small `<script>` so it ships with the page.
 
-Why Preact instead of React: roughly **3× smaller** output. With the sample menu the compiled file is ≈ **110 KB total** (≈ 28 KB CSS, ≈ 65 KB JS — Preact + localforage + app code — and ≈ 17 KB SSR markup) versus ≈ 243 KB with React.
+Why Preact instead of React: roughly **3× smaller** output. With the sample menu the compiled bundle totals ≈ **117 KB across all three files** (≈ 30 KB HTML, ≈ 28 KB CSS, ≈ 59 KB JS — Preact + localforage + app code) versus ≈ 243 KB inlined with React.
 
 ## CLI
 
@@ -194,6 +203,8 @@ Styles are written as Tailwind utility classes in `src/MenuApp.jsx`. The theme (
 
 ## Output
 
-The generated HTML is fully self-contained — CSS, JavaScript, embedded menu JSON, and country-flag SVGs are all inlined. You can host it on any static file server, attach it to an email, or open it locally. The only external resources fetched at runtime are the Google Fonts stylesheet and the dish images on first load (after that, dish images come from the IndexedDB cache for 8 hours).
+Each compile emits three sibling files: `<name>.html`, `<name>.css`, and `<name>.js`. The HTML keeps the per-menu data (`__MENU_DATA__`, etc.) inline in a tiny `<script>`; CSS and JS are external so browsers can cache them across menus and reloads. Country-flag SVGs are embedded inside the CSS as `data:` URLs, and there are no other build-time external resources.
 
-See `sample-menu.json` for a working example and `menu.html` (or `dist/index.html` after the example command) for sample compiled output.
+Drop the three files on any static host (S3, Netlify, GitHub Pages, a USB stick, etc.). At runtime the only network requests are the Google Fonts stylesheet and the dish images on first load — after that, dish images come from the IndexedDB cache for 8 hours.
+
+See `sample-menu.json` for a working example and run the example command to get a fresh `dist/index.{html,css,js}`.

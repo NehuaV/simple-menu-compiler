@@ -6,6 +6,16 @@
 	},
 	{
 		"type": "section",
+		"id": "starters1",
+		"name": { "en": "Starters", "it": "Antipasti", "fr": "Entrées" }
+	},
+	{
+		"type": "section",
+		"id": "starters2",
+		"name": { "en": "Starters", "it": "Antipasti", "fr": "Entrées" }
+	},
+	{
+		"type": "section",
 		"id": "mains",
 		"name": { "en": "Main Courses", "it": "Secondi", "fr": "Plats" }
 	},
@@ -172,6 +182,54 @@
 		"image": {
 			"src": "https://loremflickr.com/1200/800/tiramisu?lock=77",
 			"placeholder": "https://loremflickr.com/40/27/tiramisu?lock=77"
+		}
+	},
+	{
+		"type": "item",
+		"id": "bruschetta",
+		"section": "starters2",
+		"name": {
+			"en": "Bruschetta",
+			"it": "Bruschetta al Pomodoro",
+			"fr": "Bruschetta"
+		},
+		"description": {
+			"en": "Grilled bread rubbed with garlic, topped with fresh tomato, basil, and extra virgin olive oil.",
+			"it": "Pane grigliato strofinato con aglio, con pomodoro fresco, basilico e olio extravergine.",
+			"fr": "Pain grillé frotté à l'ail, garni de tomate fraîche, basilic et huile d'olive vierge extra."
+		},
+		"category": { "en": "Vegetarian", "it": "Vegetariano", "fr": "Végétarien" },
+		"price": { "amount": 8.5, "currency": "€" },
+		"tags": ["vegetarian", "vegan", "gluten"],
+		"allergens": ["gluten"],
+		"calories": 210,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/bruschetta,italian?lock=11",
+			"placeholder": "https://loremflickr.com/40/27/bruschetta,italian?lock=11"
+		}
+	},
+	{
+		"type": "item",
+		"id": "bruschetta",
+		"section": "starters1",
+		"name": {
+			"en": "Bruschetta",
+			"it": "Bruschetta al Pomodoro",
+			"fr": "Bruschetta"
+		},
+		"description": {
+			"en": "Grilled bread rubbed with garlic, topped with fresh tomato, basil, and extra virgin olive oil.",
+			"it": "Pane grigliato strofinato con aglio, con pomodoro fresco, basilico e olio extravergine.",
+			"fr": "Pain grillé frotté à l'ail, garni de tomate fraîche, basilic et huile d'olive vierge extra."
+		},
+		"category": { "en": "Vegetarian", "it": "Vegetariano", "fr": "Végétarien" },
+		"price": { "amount": 8.5, "currency": "€" },
+		"tags": ["vegetarian", "vegan", "gluten"],
+		"allergens": ["gluten"],
+		"calories": 210,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/bruschetta,italian?lock=11",
+			"placeholder": "https://loremflickr.com/40/27/bruschetta,italian?lock=11"
 		}
 	}
 ]

@@ -237,6 +237,16 @@ function buildFlagCss(menuData) {
 
 	const css = cssResult.css;
 
+	// Asset filenames derived from the output HTML basename, e.g.
+	//   dist/index.html  →  dist/index.css, dist/index.js
+	const absOutput = path.resolve(outputFile);
+	const outDir = path.dirname(absOutput);
+	const outBase = path.basename(absOutput, path.extname(absOutput));
+	const cssPath = path.join(outDir, `${outBase}.css`);
+	const jsPath = path.join(outDir, `${outBase}.js`);
+	const cssHref = `${outBase}.css`;
+	const jsSrc = `${outBase}.js`;
+
 	const html = `<!DOCTYPE html>
 <html lang="${initialLocale}">
 <head>
@@ -245,7 +255,7 @@ function buildFlagCss(menuData) {
   <meta name="theme-color" content="#0e0d0b" />
   <meta name="description" content="${restaurantName} — Menu" />
   <title>${restaurantName}</title>
-  <style>${css}</style>
+  <link rel="stylesheet" href="${cssHref}" />
 </head>
 <body>
   <div id="app">${appHtml}</div>
@@ -255,16 +265,30 @@ function buildFlagCss(menuData) {
     window.__INITIAL_LOCALE__  = ${JSON.stringify(initialLocale)};
     window.__RESTAURANT_NAME__ = ${JSON.stringify(restaurantName)};
   </script>
-  <script>${clientJs}</script>
+  <script src="${jsSrc}" defer></script>
 </body>
 </html>`;
 
-	const outDir = path.dirname(path.resolve(outputFile));
 	if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-	fs.writeFileSync(path.resolve(outputFile), html, "utf8");
+	fs.writeFileSync(absOutput, html, "utf8");
+	fs.writeFileSync(cssPath, css, "utf8");
+	fs.writeFileSync(jsPath, clientJs, "utf8");
 
-	const kb = (Buffer.byteLength(html, "utf8") / 1024).toFixed(1);
-	console.log(`✓ Compiled → ${outputFile}  (${kb} KB)`);
+	const sizeKb = (bytes) => (bytes / 1024).toFixed(1);
+	const htmlBytes = Buffer.byteLength(html, "utf8");
+	const cssBytes = Buffer.byteLength(css, "utf8");
+	const jsBytes = Buffer.byteLength(clientJs, "utf8");
+	const totalKb = sizeKb(htmlBytes + cssBytes + jsBytes);
+
+	console.log(`✓ Compiled →`);
+	console.log(`    ${outputFile}  (${sizeKb(htmlBytes)} KB)`);
+	console.log(
+		`    ${path.relative(process.cwd(), cssPath)}  (${sizeKb(cssBytes)} KB)`,
+	);
+	console.log(
+		`    ${path.relative(process.cwd(), jsPath)}  (${sizeKb(jsBytes)} KB)`,
+	);
+	console.log(`    total: ${totalKb} KB`);
 })().catch((err) => {
 	console.error("✗ Compilation failed:", err);
 	process.exit(1);
