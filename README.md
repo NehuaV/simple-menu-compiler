@@ -33,7 +33,7 @@ The compiler produces a single self-contained HTML file:
 4. **Flags** — Only the country flags for locales present in your menu data are read from `node_modules/flag-icons/flags/4x3/` and embedded as `data:image/svg+xml` background-image rules.
 5. **Assembly** — SSR markup, generated CSS, embedded menu JSON, and the script are concatenated into one `.html` file.
 
-Why Preact instead of React: roughly **3× smaller** output. With the sample menu the compiled file is ≈ **110 KB total** (≈ 28 KB CSS, ≈ 65 KB JS — Preact + localforage + app code — and ≈ 17 KB SSR markup) versus ≈ 243 KB with React.
+Why Preact instead of React: roughly **3× smaller** output. With the sample menu the compiled file is ≈ **110 KB total** (≈ 28 KB CSS, ≈ 65 KB JS — Preact + localforage + app code — and ≈ 17 KB SSR markup) versus ≈ 243 KB with just React alone.
 
 ## CLI
 
@@ -129,13 +129,13 @@ When both are provided, the **low-res placeholder is rendered with a heavy `blur
 }
 ```
 
-## Image caching (IndexedDB, 8-hour TTL)
+## Image caching (IndexedDB, 5-minute TTL)
 
 The compiled page uses [`localforage`](https://localforage.github.io/localForage/) to cache high-resolution images in the browser's IndexedDB:
 
 - **First visit** — images load from the network; on each successful load a background `fetch()` stores a copy in IndexedDB with a timestamp.
-- **Repeat visit (within 8 h)** — the `<img>`'s `src` is swapped to a `blob:` URL produced from the cached bytes, so **no network request is made for any cached image**.
-- **After 8 h** — stale entries are evicted on read; the image is refetched and the cache is refreshed.
+- **Repeat visit (within 5 minutes)** — the `<img>`'s `src` is swapped to a `blob:` URL produced from the cached bytes, so **no network request is made for any cached image**.
+- **After 5 minutes** — stale entries are evicted on read; the image is refetched and the cache is refreshed.
 
 The cache lives in an IndexedDB database named `menu-compiler` → store `images`. Each entry is `{ blob: Blob, timestamp: number }`, keyed by the image URL.
 
