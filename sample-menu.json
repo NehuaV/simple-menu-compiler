@@ -1,0 +1,149 @@
+[
+	{
+		"type": "section",
+		"id": "starters",
+		"name": { "en": "Starters", "it": "Antipasti", "fr": "Entrées" }
+	},
+	{
+		"type": "section",
+		"id": "mains",
+		"name": { "en": "Main Courses", "it": "Secondi", "fr": "Plats" }
+	},
+	{
+		"type": "section",
+		"id": "desserts",
+		"name": { "en": "Desserts", "it": "Dolci", "fr": "Desserts" }
+	},
+	{
+		"type": "item",
+		"id": "bruschetta",
+		"section": "starters",
+		"name": {
+			"en": "Bruschetta",
+			"it": "Bruschetta al Pomodoro",
+			"fr": "Bruschetta"
+		},
+		"description": {
+			"en": "Grilled bread rubbed with garlic, topped with fresh tomato, basil, and extra virgin olive oil.",
+			"it": "Pane grigliato strofinato con aglio, con pomodoro fresco, basilico e olio extravergine.",
+			"fr": "Pain grillé frotté à l'ail, garni de tomate fraîche, basilic et huile d'olive vierge extra."
+		},
+		"category": { "en": "Vegetarian", "it": "Vegetariano", "fr": "Végétarien" },
+		"price": { "amount": 8.5, "currency": "€" },
+		"tags": ["vegetarian", "vegan", "gluten"],
+		"allergens": ["gluten"],
+		"calories": 210
+	},
+	{
+		"type": "item",
+		"id": "calamari",
+		"section": "starters",
+		"name": {
+			"en": "Fried Calamari",
+			"it": "Calamari Fritti",
+			"fr": "Calamars Frits"
+		},
+		"description": {
+			"en": "Crispy fried squid rings served with lemon aioli and a side of marinara sauce.",
+			"it": "Anelli di calamaro croccanti serviti con aioli al limone e salsa marinara.",
+			"fr": "Rondelles de calmar croustillantes avec aïoli au citron et sauce marinara."
+		},
+		"category": { "en": "Seafood", "it": "Pesce", "fr": "Fruits de mer" },
+		"price": { "amount": 12.0, "currency": "€" },
+		"tags": ["seafood", "fried"],
+		"allergens": ["gluten", "molluscs"],
+		"calories": 380
+	},
+	{
+		"type": "item",
+		"id": "risotto",
+		"section": "mains",
+		"name": {
+			"en": "Mushroom Risotto",
+			"it": "Risotto ai Funghi",
+			"fr": "Risotto aux Champignons"
+		},
+		"description": {
+			"en": "Slow-cooked Arborio rice with wild mushrooms, truffle oil, parmesan, and fresh thyme.",
+			"it": "Riso Arborio cotto lentamente con funghi selvatici, olio al tartufo, parmigiano e timo.",
+			"fr": "Riz Arborio mijoté avec champignons sauvages, huile de truffe, parmesan et thym frais."
+		},
+		"category": { "en": "Vegetarian", "it": "Vegetariano", "fr": "Végétarien" },
+		"price": { "amount": 18.0, "currency": "€" },
+		"tags": ["vegetarian", "gluten-free"],
+		"allergens": ["dairy"],
+		"calories": 520
+	},
+	{
+		"type": "item",
+		"id": "branzino",
+		"section": "mains",
+		"name": {
+			"en": "Grilled Sea Bass",
+			"it": "Branzino alla Griglia",
+			"fr": "Bar Grillé"
+		},
+		"description": {
+			"en": "Whole sea bass grilled over charcoal, served with roasted cherry tomatoes and capers.",
+			"it": "Branzino intero grigliato su carbone, servito con pomodorini arrostiti e capperi.",
+			"fr": "Bar entier grillé au charbon, servi avec tomates cerises rôties et câpres."
+		},
+		"category": { "en": "Seafood", "it": "Pesce", "fr": "Fruits de mer" },
+		"price": { "amount": 26.0, "currency": "€" },
+		"tags": ["seafood", "gluten-free"],
+		"allergens": ["fish"],
+		"calories": 340
+	},
+	{
+		"type": "item",
+		"id": "tagliata",
+		"section": "mains",
+		"name": {
+			"en": "Beef Tagliata",
+			"it": "Tagliata di Manzo",
+			"fr": "Tagliata de Bœuf"
+		},
+		"description": {
+			"en": "Sliced medium-rare sirloin on a bed of rocket with shaved parmesan and balsamic reduction.",
+			"it": "Controfiletto a fette al sangue su rucola con parmigiano a scaglie e riduzione di balsamico.",
+			"fr": "Aloyau tranché saignant sur lit de roquette avec copeaux de parmesan et réduction de balsamique."
+		},
+		"category": { "en": "Meat", "it": "Carne", "fr": "Viande" },
+		"price": { "amount": 28.0, "currency": "€" },
+		"tags": ["beef", "gluten-free"],
+		"allergens": ["dairy"],
+		"calories": 460
+	},
+	{
+		"type": "item",
+		"id": "icecream",
+		"section": "desserts",
+		"name": { "en": "Ice Cream", "it": "Gelato", "fr": "Glace" },
+		"description": {
+			"en": "Three scoops of house-made gelato. Choose from vanilla bean, dark chocolate, or pistachio.",
+			"it": "Tre palline di gelato artigianale. Scegli tra vaniglia, cioccolato fondente o pistacchio.",
+			"fr": "Trois boules de glace maison. Choisissez entre vanille, chocolat noir ou pistache."
+		},
+		"category": { "en": "Dessert", "it": "Dolce", "fr": "Dessert" },
+		"price": { "amount": 7.0, "currency": "€" },
+		"tags": ["vegetarian", "gluten-free"],
+		"allergens": ["dairy", "nuts"],
+		"calories": 280
+	},
+	{
+		"type": "item",
+		"id": "tiramisu",
+		"section": "desserts",
+		"name": { "en": "Tiramisù", "it": "Tiramisù Classico", "fr": "Tiramisù" },
+		"description": {
+			"en": "Classic Italian dessert with mascarpone, espresso-soaked ladyfingers, and dusted cocoa.",
+			"it": "Dolce classico italiano con mascarpone, savoiardi imbevuti di espresso e cacao in polvere.",
+			"fr": "Dessert italien classique avec mascarpone, biscuits imbibés d'espresso et cacao en poudre."
+		},
+		"category": { "en": "Dessert", "it": "Dolce", "fr": "Dessert" },
+		"price": { "amount": 9.0, "currency": "€" },
+		"tags": ["vegetarian"],
+		"allergens": ["gluten", "dairy", "eggs"],
+		"calories": 420
+	}
+]
