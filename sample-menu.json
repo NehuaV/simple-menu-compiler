@@ -32,7 +32,11 @@
 		"price": { "amount": 8.5, "currency": "€" },
 		"tags": ["vegetarian", "vegan", "gluten"],
 		"allergens": ["gluten"],
-		"calories": 210
+		"calories": 210,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/bruschetta,italian?lock=11",
+			"placeholder": "https://loremflickr.com/40/27/bruschetta,italian?lock=11"
+		}
 	},
 	{
 		"type": "item",
@@ -52,7 +56,11 @@
 		"price": { "amount": 12.0, "currency": "€" },
 		"tags": ["seafood", "fried"],
 		"allergens": ["gluten", "molluscs"],
-		"calories": 380
+		"calories": 380,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/calamari,fried?lock=22",
+			"placeholder": "https://loremflickr.com/40/27/calamari,fried?lock=22"
+		}
 	},
 	{
 		"type": "item",
@@ -72,7 +80,11 @@
 		"price": { "amount": 18.0, "currency": "€" },
 		"tags": ["vegetarian", "gluten-free"],
 		"allergens": ["dairy"],
-		"calories": 520
+		"calories": 520,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/risotto,mushroom?lock=33",
+			"placeholder": "https://loremflickr.com/40/27/risotto,mushroom?lock=33"
+		}
 	},
 	{
 		"type": "item",
@@ -92,7 +104,11 @@
 		"price": { "amount": 26.0, "currency": "€" },
 		"tags": ["seafood", "gluten-free"],
 		"allergens": ["fish"],
-		"calories": 340
+		"calories": 340,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/seabass,grilled?lock=44",
+			"placeholder": "https://loremflickr.com/40/27/seabass,grilled?lock=44"
+		}
 	},
 	{
 		"type": "item",
@@ -112,7 +128,11 @@
 		"price": { "amount": 28.0, "currency": "€" },
 		"tags": ["beef", "gluten-free"],
 		"allergens": ["dairy"],
-		"calories": 460
+		"calories": 460,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/steak,beef?lock=55",
+			"placeholder": "https://loremflickr.com/40/27/steak,beef?lock=55"
+		}
 	},
 	{
 		"type": "item",
@@ -128,7 +148,11 @@
 		"price": { "amount": 7.0, "currency": "€" },
 		"tags": ["vegetarian", "gluten-free"],
 		"allergens": ["dairy", "nuts"],
-		"calories": 280
+		"calories": 280,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/gelato,icecream?lock=66",
+			"placeholder": "https://loremflickr.com/40/27/gelato,icecream?lock=66"
+		}
 	},
 	{
 		"type": "item",
@@ -144,6 +168,10 @@
 		"price": { "amount": 9.0, "currency": "€" },
 		"tags": ["vegetarian"],
 		"allergens": ["gluten", "dairy", "eggs"],
-		"calories": 420
+		"calories": 420,
+		"image": {
+			"src": "https://loremflickr.com/1200/800/tiramisu?lock=77",
+			"placeholder": "https://loremflickr.com/40/27/tiramisu?lock=77"
+		}
 	}
 ]

@@ -1,4 +1,125 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef } from "preact/hooks";
+import localforage from "localforage";
+
+// ── Locale → ISO 3166-1 alpha-2 country code for flag-icons ──────────────────
+// Maps language codes (BCP 47-ish) to the country whose flag visually represents
+// that language. Extend as needed; falls back to the locale itself.
+export const LOCALE_TO_COUNTRY = {
+	en: "gb",
+	it: "it",
+	fr: "fr",
+	es: "es",
+	de: "de",
+	pt: "pt",
+	"pt-br": "br",
+	"en-us": "us",
+	"en-gb": "gb",
+	nl: "nl",
+	pl: "pl",
+	ru: "ru",
+	uk: "ua",
+	cs: "cz",
+	sk: "sk",
+	hu: "hu",
+	ro: "ro",
+	bg: "bg",
+	el: "gr",
+	tr: "tr",
+	sv: "se",
+	da: "dk",
+	no: "no",
+	nb: "no",
+	fi: "fi",
+	is: "is",
+	ja: "jp",
+	zh: "cn",
+	"zh-hk": "hk",
+	"zh-tw": "tw",
+	ko: "kr",
+	vi: "vn",
+	th: "th",
+	id: "id",
+	ms: "my",
+	hi: "in",
+	bn: "bd",
+	ta: "lk",
+	he: "il",
+	ar: "sa",
+	fa: "ir",
+	ur: "pk",
+	sw: "ke",
+	af: "za",
+};
+
+export function localeToCountry(locale) {
+	const k = String(locale ?? "").toLowerCase();
+	return LOCALE_TO_COUNTRY[k] ?? k.split("-")[0] ?? k;
+}
+
+export function languageDisplayName(code, inLocale = code) {
+	try {
+		const dn = new Intl.DisplayNames([inLocale], { type: "language" });
+		const name = dn.of(code);
+		if (name && name !== code)
+			return name.charAt(0).toUpperCase() + name.slice(1);
+	} catch {}
+	return code.toUpperCase();
+}
+
+// ── Image cache (IndexedDB via localforage, 5-minutes TTL) ──────────────────────
+const IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+
+let imageStore = null;
+/**
+ * Get the image store
+ * @returns {LocalForage | null}
+ */
+function getImageStore() {
+	if (imageStore) return imageStore;
+	if (typeof window === "undefined") return null;
+	try {
+		imageStore = localforage.createInstance({
+			name: "menu-compiler",
+			storeName: "images",
+			description: "Cached menu images (TTL 5 minutes)",
+		});
+	} catch {
+		imageStore = null;
+	}
+	return imageStore;
+}
+
+/**
+ * Get a cached blob URL
+ * @param {string} url - The URL to get a cached blob URL for
+ * @returns {string | null}
+ */
+async function getCachedBlobUrl(url) {
+	const store = getImageStore();
+	if (!store || !url) return null;
+	try {
+		const entry = await store.getItem(url);
+		if (!entry) return null;
+		if (Date.now() - entry.timestamp > IMAGE_CACHE_TTL_MS) {
+			store.removeItem(url).catch(() => {});
+			return null;
+		}
+		return URL.createObjectURL(entry.blob);
+	} catch {
+		return null;
+	}
+}
+
+async function cacheImage(url) {
+	const store = getImageStore();
+	if (!store || !url) return;
+	try {
+		const res = await fetch(url, { mode: "cors", credentials: "omit" });
+		if (!res.ok) return;
+		const blob = await res.blob();
+		await store.setItem(url, { blob, timestamp: Date.now() });
+	} catch {}
+}
 
 export function localize(val, locale) {
 	if (!val || typeof val === "string") return val ?? "";
@@ -38,6 +159,211 @@ function formatPrice(price) {
 	return price;
 }
 
+function normalizeImage(image) {
+	if (!image) return null;
+	if (typeof image === "string") return { src: image, placeholder: null };
+	return { src: image.src ?? null, placeholder: image.placeholder ?? null };
+}
+
+// ── ProgressiveImage ─────────────────────────────────────────────────────────
+// Renders a low-res blurred placeholder underneath, and fades in the high-res
+// image once it has finished loading. Both `<img>` tags are absolutely
+// positioned and fill their (relatively positioned) parent container.
+//
+// Caches images in IndexedDB (via localforage) with an 8-hour TTL:
+//  - First visit:  render uses the original URL; we fetch a copy in the
+//                  background and store it in IndexedDB.
+//  - Repeat visit: we swap the `src` to a blob URL produced from the cached
+//                  bytes, so the browser never hits the network.
+function ProgressiveImage({ src, placeholder, alt, eager = false }) {
+	const [resolvedSrc, setResolvedSrc] = useState(src);
+	const [fromCache, setFromCache] = useState(false);
+	const [loaded, setLoaded] = useState(false);
+	const imgRef = useRef(null);
+
+	useEffect(() => {
+		if (typeof window === "undefined" || !src) return;
+
+		let cancelled = false;
+		let createdBlobUrl = null;
+
+		(async () => {
+			const cached = await getCachedBlobUrl(src);
+			if (cancelled) {
+				if (cached) URL.revokeObjectURL(cached);
+				return;
+			}
+			if (cached) {
+				createdBlobUrl = cached;
+				setFromCache(true);
+				setResolvedSrc(cached);
+				return;
+			}
+			cacheImage(src);
+		})();
+
+		return () => {
+			cancelled = true;
+			if (createdBlobUrl) URL.revokeObjectURL(createdBlobUrl);
+		};
+	}, [src]);
+
+	useEffect(() => {
+		if (fromCache) {
+			setLoaded(true);
+			return;
+		}
+		setLoaded(false);
+		const img = imgRef.current;
+		if (img?.complete && img.naturalWidth > 0) setLoaded(true);
+	}, [resolvedSrc, fromCache]);
+
+	if (!src) return null;
+
+	// Cached path: render the high-res blob URL instantly with no transition
+	// (and skip the blurred placeholder entirely — there's nothing to mask).
+	// Uncached path: show the placeholder underneath and fade the high-res in
+	// on load.
+	const highResClass = fromCache
+		? "absolute inset-0 w-full h-full object-cover opacity-100"
+		: placeholder
+			? loaded
+				? "absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 opacity-100"
+				: "absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 opacity-0"
+			: "absolute inset-0 w-full h-full object-cover";
+
+	return (
+		<>
+			{placeholder && !fromCache && (
+				<img
+					src={placeholder}
+					alt=""
+					aria-hidden="true"
+					className="absolute inset-0 w-full h-full object-cover blur-xl scale-110"
+				/>
+			)}
+			<img
+				ref={imgRef}
+				src={resolvedSrc}
+				alt={alt}
+				loading={eager ? "eager" : "lazy"}
+				decoding="async"
+				onLoad={() => setLoaded(true)}
+				className={highResClass}
+			/>
+		</>
+	);
+}
+
+// ── LanguageDropdown ─────────────────────────────────────────────────────────
+function LanguageDropdown({ locales, current, onChange }) {
+	const [open, setOpen] = useState(false);
+	const containerRef = useRef(null);
+
+	useEffect(() => {
+		if (!open) return;
+		const onDown = (e) => {
+			if (containerRef.current && !containerRef.current.contains(e.target)) {
+				setOpen(false);
+			}
+		};
+		const onKey = (e) => e.key === "Escape" && setOpen(false);
+		document.addEventListener("mousedown", onDown);
+		document.addEventListener("keydown", onKey);
+		return () => {
+			document.removeEventListener("mousedown", onDown);
+			document.removeEventListener("keydown", onKey);
+		};
+	}, [open]);
+
+	const currentCountry = localeToCountry(current);
+	const currentName = languageDisplayName(current, current);
+
+	return (
+		<div ref={containerRef} className="relative shrink-0">
+			<button
+				type="button"
+				onClick={() => setOpen((v) => !v)}
+				aria-haspopup="listbox"
+				aria-expanded={open}
+				aria-label="Change language"
+				className="inline-flex items-center gap-2 h-9 px-3 rounded-full bg-surface2 border border-white/[0.07] text-text text-xs sm:text-sm font-medium hover:border-gold/40 focus:border-gold focus:outline-none transition-colors"
+			>
+				<span
+					className={`fi fi-${currentCountry} shrink-0 rounded-sm shadow-sm shadow-black/40`}
+					aria-hidden="true"
+				/>
+				<span className="hidden sm:inline tracking-wide">{currentName}</span>
+				<span className="sm:hidden tracking-wider">
+					{current.toUpperCase()}
+				</span>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox="0 0 20 20"
+					fill="currentColor"
+					aria-hidden="true"
+					className={
+						open
+							? "h-4 w-4 text-text-muted transition-transform rotate-180"
+							: "h-4 w-4 text-text-muted transition-transform"
+					}
+				>
+					<path
+						fillRule="evenodd"
+						d="M10.293 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L10 12.586l3.293-3.293a1 1 0 011.414 1.414l-4 4z"
+						clipRule="evenodd"
+					/>
+				</svg>
+			</button>
+
+			{open && (
+				<ul
+					role="listbox"
+					aria-label="Available languages"
+					className="absolute right-0 mt-2 min-w-[12rem] bg-surface border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50 animate-fadeIn"
+				>
+					{locales.map((loc) => {
+						const country = localeToCountry(loc);
+						const native = languageDisplayName(loc, loc);
+						const active = loc === current;
+						return (
+							<li key={loc}>
+								<button
+									type="button"
+									role="option"
+									aria-selected={active}
+									onClick={() => {
+										onChange(loc);
+										setOpen(false);
+									}}
+									className={
+										active
+											? "w-full flex items-center gap-3 px-3.5 py-2.5 text-sm text-text bg-gold/10 hover:bg-gold/15 transition-colors"
+											: "w-full flex items-center gap-3 px-3.5 py-2.5 text-sm text-text-soft hover:bg-white/[0.04] hover:text-text transition-colors"
+									}
+								>
+									<span
+										className={`fi fi-${country} shrink-0 rounded-sm shadow-sm shadow-black/40`}
+										aria-hidden="true"
+									/>
+									<span className="flex-1 text-left tracking-wide">
+										{native}
+									</span>
+									{active && (
+										<span className="text-gold text-xs" aria-hidden="true">
+											●
+										</span>
+									)}
+								</button>
+							</li>
+						);
+					})}
+				</ul>
+			)}
+		</div>
+	);
+}
+
 // ── Modal ────────────────────────────────────────────────────────────────────
 function Modal({ item, locale, onClose }) {
 	useEffect(() => {
@@ -57,7 +383,7 @@ function Modal({ item, locale, onClose }) {
 	const allergens = item.allergens ?? [];
 	const price = item.price;
 	const calories = item.calories;
-	const image = item.image;
+	const image = normalizeImage(item.image);
 	const displayPrice = formatPrice(price);
 
 	return (
@@ -86,12 +412,13 @@ function Modal({ item, locale, onClose }) {
 					✕
 				</button>
 
-				{image && (
-					<div className="aspect-[16/9] overflow-hidden rounded-t-2xl">
-						<img
-							src={image}
+				{image?.src && (
+					<div className="relative aspect-[16/9] overflow-hidden rounded-t-2xl bg-surface2">
+						<ProgressiveImage
+							src={image.src}
+							placeholder={image.placeholder}
 							alt={name}
-							className="w-full h-full object-cover"
+							eager
 						/>
 					</div>
 				)}
@@ -165,7 +492,7 @@ function MenuItem({ item, locale, onOpen }) {
 	const name = localize(item.name, locale);
 	const category = localize(item.category, locale);
 	const price = item.price;
-	const image = item.image;
+	const image = normalizeImage(item.image);
 	const tags = item.tags ?? [];
 	const displayPrice = formatPrice(price);
 
@@ -179,20 +506,21 @@ function MenuItem({ item, locale, onOpen }) {
 			aria-label={`View details for ${name}`}
 		>
 			<div className="relative aspect-[4/3] bg-surface2 overflow-hidden">
-				{image ? (
-					<img
-						src={image}
-						alt={name}
-						className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
-						loading="lazy"
-					/>
+				{image?.src ? (
+					<div className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.04]">
+						<ProgressiveImage
+							src={image.src}
+							placeholder={image.placeholder}
+							alt={name}
+						/>
+					</div>
 				) : (
 					<div className="w-full h-full flex items-center justify-center font-serif text-5xl text-text-muted uppercase bg-gradient-to-br from-surface2 to-surface">
 						<span>{name[0]}</span>
 					</div>
 				)}
 				{category && (
-					<span className="absolute top-2.5 left-2.5 bg-black/75 backdrop-blur-md border border-white/[0.07] text-text-soft text-[11px] font-medium tracking-wider uppercase px-2.5 py-0.5 rounded-full">
+					<span className="absolute top-2.5 left-2.5 z-10 bg-black/75 backdrop-blur-md border border-white/[0.07] text-text-soft text-[11px] font-medium tracking-wider uppercase px-2.5 py-0.5 rounded-full">
 						{category}
 					</span>
 				)}
@@ -436,33 +764,18 @@ export default function MenuApp({
 								type="search"
 								placeholder="Search…"
 								value={search}
-								onChange={(e) => setSearch(e.target.value)}
+								onInput={(e) => setSearch(e.target.value)}
 								aria-label="Search menu items"
 								className="w-full sm:w-44 focus:sm:w-56 h-9 pl-8 pr-3.5 bg-surface2 border border-white/[0.07] rounded-full text-text text-xs sm:text-sm placeholder:text-text-muted outline-none focus:border-gold transition-all"
 							/>
 						</div>
 
 						{allLocales.length > 1 && (
-							<div
-								className="flex gap-0.5 bg-surface2 border border-white/[0.07] rounded-full p-0.5 shrink-0"
-								role="group"
-								aria-label="Language"
-							>
-								{allLocales.map((l) => (
-									<button
-										type="button"
-										key={l}
-										className={
-											locale === l
-												? "px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wider transition-colors bg-gold text-bg"
-												: "px-2.5 py-1 rounded-full text-[11px] font-medium tracking-wider transition-colors text-text-muted hover:text-text"
-										}
-										onClick={() => setLocale(l)}
-									>
-										{l.toUpperCase()}
-									</button>
-								))}
-							</div>
+							<LanguageDropdown
+								locales={allLocales}
+								current={locale}
+								onChange={setLocale}
+							/>
 						)}
 					</div>
 				</div>

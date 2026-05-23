@@ -18,7 +18,7 @@
 require("@babel/register")({
 	presets: [
 		["@babel/preset-env", { targets: { node: "current" } }],
-		["@babel/preset-react", { runtime: "automatic" }],
+		["@babel/preset-react", { runtime: "automatic", importSource: "preact" }],
 	],
 	extensions: [".jsx", ".js"],
 	cache: false,
@@ -80,9 +80,7 @@ try {
 
 // ── Tailwind theme (kept inline so the compiler stays single-file) ───────────
 const tailwindConfig = {
-	content: [
-		path.join(__dirname, "src/**/*.{js,jsx}"),
-	],
+	content: [path.join(__dirname, "src/**/*.{js,jsx}")],
 	theme: {
 		extend: {
 			colors: {
@@ -134,9 +132,11 @@ const tailwindConfig = {
 	],
 };
 
-const CSS_INPUT = `
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+// Place google fonts inline so the output stays self-contained.
+// TODO: Add at some point in the future.
+// @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap');
 
+const CSS_INPUT = `
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -152,20 +152,57 @@ const CSS_INPUT = `
   }
   ::selection { background: rgba(201,168,76,0.35); color: #ede8df; }
 }
+
+/* flag-icons base styles (subset) */
+.fi {
+  position: relative;
+  display: inline-block;
+  width: 1.5em;
+  height: 1.125em;
+  background-size: cover;
+  background-position: 50%;
+  background-repeat: no-repeat;
+  line-height: 1;
+  vertical-align: middle;
+}
 `;
+
+// ── Flag SVG embedding ───────────────────────────────────────────────────────
+// Read the SVGs for only the locales used in this menu, inline them as CSS
+// background-image rules so the output stays self-contained.
+function buildFlagCss(menuData) {
+	const { detectLocales, localeToCountry } = require("./src/MenuApp.jsx");
+	const locales = detectLocales(menuData);
+	const countries = [...new Set(locales.map(localeToCountry))];
+	const flagsDir = path.join(
+		__dirname,
+		"node_modules",
+		"flag-icons",
+		"flags",
+		"4x3",
+	);
+	const parts = [];
+	for (const country of countries) {
+		const file = path.join(flagsDir, `${country}.svg`);
+		if (!fs.existsSync(file)) {
+			console.warn(`  ! missing flag SVG for "${country}"`);
+			continue;
+		}
+		const svg = fs.readFileSync(file, "utf8").replace(/\s+/g, " ").trim();
+		const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+		parts.push(`.fi-${country}{background-image:url("${dataUrl}")}`);
+	}
+	return parts.join("\n");
+}
 
 (async () => {
 	console.log("⚙  Rendering server-side HTML…");
-	const React = require("react");
-	const { renderToString } = require("react-dom/server");
+	const { h } = require("preact");
+	const { renderToString } = require("preact-render-to-string");
 	const MenuApp = require("./src/MenuApp.jsx").default;
 
 	const appHtml = renderToString(
-		React.createElement(MenuApp, {
-			menuData,
-			initialLocale,
-			restaurantName,
-		}),
+		h(MenuApp, { menuData, initialLocale, restaurantName }),
 	);
 
 	console.log("⚙  Bundling client-side JavaScript…");
@@ -177,6 +214,8 @@ const CSS_INPUT = `
 		format: "iife",
 		target: ["es2018"],
 		minify: true,
+		jsx: "automatic",
+		jsxImportSource: "preact",
 		define: { "process.env.NODE_ENV": '"production"' },
 	});
 	const clientJs = buildResult.outputFiles[0].text;
@@ -186,16 +225,15 @@ const CSS_INPUT = `
 	const tailwindcss = require("tailwindcss");
 	const autoprefixer = require("autoprefixer");
 
+	const flagCss = buildFlagCss(menuData);
+
 	const cssResult = await postcss([
 		tailwindcss({
 			...tailwindConfig,
-			content: [
-				...tailwindConfig.content,
-				{ raw: appHtml, extension: "html" },
-			],
+			content: [...tailwindConfig.content, { raw: appHtml, extension: "html" }],
 		}),
 		autoprefixer,
-	]).process(CSS_INPUT, { from: undefined });
+	]).process(`${CSS_INPUT}\n${flagCss}`, { from: undefined });
 
 	const css = cssResult.css;
 
