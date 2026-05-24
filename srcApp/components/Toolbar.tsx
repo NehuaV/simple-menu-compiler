@@ -1,12 +1,15 @@
-import { useRef } from "preact/hooks";
+import { useRef, useState } from "preact/hooks";
 import sampleMenu from "../../sample-menu.json";
 import { useMenuContext } from "../context";
 import type { Menu } from "../types";
 import { LocalePicker } from "./LocalePicker";
+import { SettingsDialog } from "./SettingsDialog";
+import { TranslateButton } from "./TranslateButton";
 
 export function Toolbar() {
 	const { addSection, addItem, importMenu, reset } = useMenuContext();
 	const fileRef = useRef<HTMLInputElement>(null);
+	const [settingsOpen, setSettingsOpen] = useState(false);
 
 	const onFile = async (e: Event) => {
 		const target = e.target as HTMLInputElement;
@@ -95,7 +98,11 @@ export function Toolbar() {
 					</button>
 				</div>
 			</div>
-			<LocalePicker />
+			<div className="flex items-center justify-between gap-3 flex-wrap">
+				<LocalePicker />
+				<TranslateButton onOpenSettings={() => setSettingsOpen(true)} />
+			</div>
+			{settingsOpen && <SettingsDialog onClose={() => setSettingsOpen(false)} />}
 		</header>
 	);
 }

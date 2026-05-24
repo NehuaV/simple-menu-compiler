@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useReducer } from "preact/hooks";
 import type { Menu, MenuEntry } from "./types";
+import type {
+	TranslatableField,
+	TranslationResult,
+} from "./translation/types";
 import {
 	type NormalizedEntry,
 	type NormalizedItem,
@@ -33,6 +37,7 @@ type Action =
 	| { type: "move-entry"; uid: string; direction: "up" | "down" }
 	| { type: "select"; uid: string | null }
 	| { type: "import"; menu: Menu }
+	| { type: "apply-translations"; results: TranslationResult[] }
 	| { type: "reset" }
 	| { type: "load-state"; state: MenuState };
 
@@ -120,12 +125,56 @@ function reducer(state: MenuState, action: Action): MenuState {
 			};
 		}
 
+		case "apply-translations": {
+			if (action.results.length === 0) return state;
+			const byUid = new Map<string, TranslationResult[]>();
+			for (const r of action.results) {
+				const list = byUid.get(r.uid) ?? [];
+				list.push(r);
+				byUid.set(r.uid, list);
+			}
+			const entries = state.entries.map((entry) => {
+				const updates = byUid.get(entry._uid);
+				if (!updates) return entry;
+				return applyTranslations(entry, updates);
+			});
+			return { ...state, entries };
+		}
+
 		case "reset":
 			return initialState();
 
 		case "load-state":
 			return action.state;
 	}
+}
+
+function applyTranslations(
+	entry: NormalizedEntry,
+	updates: TranslationResult[],
+): NormalizedEntry {
+	if (isNormalizedSection(entry)) {
+		const name = { ...entry.name };
+		for (const u of updates) {
+			if (u.field === "name" && !(name[u.targetLocale] ?? "").trim()) {
+				name[u.targetLocale] = u.text;
+			}
+		}
+		return { ...entry, name };
+	}
+	const next = {
+		...entry,
+		name: { ...entry.name },
+		description: { ...entry.description },
+		category: { ...entry.category },
+	};
+	for (const u of updates) {
+		const dict = next[u.field as TranslatableField];
+		if (!(dict[u.targetLocale] ?? "").trim()) {
+			dict[u.targetLocale] = u.text;
+		}
+	}
+	return next;
 }
 
 function stripLocale(
@@ -192,6 +241,7 @@ export interface MenuStore {
 	moveEntry: (uid: string, direction: "up" | "down") => void;
 	select: (uid: string | null) => void;
 	importMenu: (menu: Menu) => void;
+	applyTranslations: (results: TranslationResult[]) => void;
 	reset: () => void;
 	serialize: () => MenuEntry[];
 }
@@ -260,6 +310,11 @@ export function useMenuStore(): MenuStore {
 		(menu: Menu) => dispatch({ type: "import", menu }),
 		[],
 	);
+	const applyTranslations = useCallback(
+		(results: TranslationResult[]) =>
+			dispatch({ type: "apply-translations", results }),
+		[],
+	);
 	const reset = useCallback(() => dispatch({ type: "reset" }), []);
 	const serialize = useCallback(
 		() => serializeMenu(state.entries),
@@ -281,6 +336,7 @@ export function useMenuStore(): MenuStore {
 		moveEntry,
 		select,
 		importMenu,
+		applyTranslations,
 		reset,
 		serialize,
 	};
