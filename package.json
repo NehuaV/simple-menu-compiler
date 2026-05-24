@@ -1,27 +1,33 @@
 {
-  "name": "menu-compiler",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "@babel/core": "^7.29.0",
-    "@babel/preset-env": "^7.29.5",
-    "@babel/preset-react": "^7.28.5",
-    "@babel/register": "^7.29.3",
-    "esbuild": "^0.28.0",
-    "flag-icons": "^7.5.0",
-    "preact": "^10.29.2",
-    "preact-render-to-string": "^6.7.0"
-  },
-  "devDependencies": {
-    "autoprefixer": "^10.5.0",
-    "postcss": "^8.5.15",
-    "tailwindcss": "^3.4.19"
-  }
+	"name": "menu-compiler",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"app:dev": "vite",
+		"app:typecheck": "tsc --noEmit -p srcApp/tsconfig.json",
+		"app:build": "tsc --noEmit -p srcApp/tsconfig.json && vite build",
+		"app:preview": "vite preview"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"@babel/core": "^7.29.0",
+		"@babel/preset-env": "^7.29.5",
+		"@babel/preset-react": "^7.28.5",
+		"@babel/register": "^7.29.3",
+		"esbuild": "^0.28.0",
+		"flag-icons": "^7.5.0",
+		"preact": "^10.29.2",
+		"preact-render-to-string": "^6.7.0"
+	},
+	"devDependencies": {
+		"autoprefixer": "^10.5.0",
+		"postcss": "^8.5.15",
+		"tailwindcss": "^3.4.19",
+		"typescript": "^5.7.2",
+		"vite": "^6.0.5"
+	}
 }
