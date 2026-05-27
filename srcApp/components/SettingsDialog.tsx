@@ -1,7 +1,7 @@
 import { createPortal } from "preact/compat";
-import { useEffect, useState } from "preact/hooks";
+import { useCallback, useEffect, useRef, useState } from "preact/hooks";
 import { useMenuContext, useTranslationSettingsContext } from "../context";
-import { pingEndpoint } from "../translation/client";
+import { listModels, pingEndpoint } from "../translation/client";
 import { PRESETS, type TranslationSettings } from "../translation/types";
 
 interface Props {
@@ -14,13 +14,51 @@ type PingState =
 	| { kind: "ok"; sample: string }
 	| { kind: "error"; message: string };
 
+type ModelsState =
+	| { kind: "idle" }
+	| { kind: "loading" }
+	| { kind: "loaded"; models: string[] }
+	| { kind: "error"; message: string };
+
 export function SettingsDialog({ onClose }: Props) {
 	const { settings, replace } = useTranslationSettingsContext();
 	const { state } = useMenuContext();
 	const [draft, setDraft] = useState<TranslationSettings>(settings);
 	const [ping, setPing] = useState<PingState>({ kind: "idle" });
+	const [models, setModels] = useState<ModelsState>({ kind: "idle" });
+	const modelsAbort = useRef<AbortController | null>(null);
 
 	useEffect(() => setDraft(settings), [settings]);
+
+	const refreshModels = useCallback(
+		async (s: TranslationSettings) => {
+			if (!s.baseUrl.trim()) return;
+			modelsAbort.current?.abort();
+			const ctrl = new AbortController();
+			modelsAbort.current = ctrl;
+			setModels({ kind: "loading" });
+			try {
+				const list = await listModels(s, ctrl.signal);
+				if (ctrl.signal.aborted) return;
+				setModels({ kind: "loaded", models: list });
+			} catch (err) {
+				if (ctrl.signal.aborted) return;
+				setModels({
+					kind: "error",
+					message: err instanceof Error ? err.message : String(err),
+				});
+			}
+		},
+		[],
+	);
+
+	// Auto-fetch on open and whenever the base URL changes — gives users an
+	// instant model picker for LM Studio without any extra click.
+	useEffect(() => {
+		refreshModels(draft);
+		return () => modelsAbort.current?.abort();
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [draft.baseUrl, draft.apiKey]);
 
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
@@ -163,23 +201,74 @@ export function SettingsDialog({ onClose }: Props) {
 						/>
 					</label>
 
-					<label className="flex flex-col gap-1.5">
-						<span className="text-text-muted text-[11px] font-medium tracking-wider uppercase">
-							Model
-						</span>
-						<input
-							type="text"
-							value={draft.model}
-							onInput={(e) =>
-								setDraft({
-									...draft,
-									model: (e.target as HTMLInputElement).value,
-								})
-							}
-							placeholder="gpt-4o-mini, llama-3.3-70b-versatile, …"
-							className={inputClass}
-						/>
-					</label>
+					<div className="flex flex-col gap-1.5">
+						<div className="flex items-center justify-between">
+							<span className="text-text-muted text-[11px] font-medium tracking-wider uppercase">
+								Model
+							</span>
+							<button
+								type="button"
+								onClick={() => refreshModels(draft)}
+								disabled={models.kind === "loading"}
+								className="text-text-muted hover:text-text text-[10px] tracking-wider uppercase disabled:opacity-50"
+								title="Fetch /v1/models from the configured endpoint"
+							>
+								{models.kind === "loading" ? "Loading…" : "Refresh"}
+							</button>
+						</div>
+
+						{models.kind === "loaded" && models.models.length > 0 ? (
+							<select
+								value={draft.model}
+								onChange={(e) =>
+									setDraft({
+										...draft,
+										model: (e.target as HTMLSelectElement).value,
+									})
+								}
+								className={inputClass}
+							>
+								{/* Allow keeping a custom value not in the list. */}
+								{draft.model && !models.models.includes(draft.model) && (
+									<option value={draft.model}>{draft.model} (custom)</option>
+								)}
+								{models.models.map((m) => (
+									<option key={m} value={m}>
+										{m}
+									</option>
+								))}
+							</select>
+						) : (
+							<input
+								type="text"
+								value={draft.model}
+								list="model-suggestions"
+								onInput={(e) =>
+									setDraft({
+										...draft,
+										model: (e.target as HTMLInputElement).value,
+									})
+								}
+								placeholder="gpt-4o-mini, llama-3.3-70b-versatile, …"
+								className={inputClass}
+							/>
+						)}
+						{models.kind === "loaded" && (
+							<span className="text-text-muted text-[10px]">
+								{models.models.length} model
+								{models.models.length === 1 ? "" : "s"} available from{" "}
+								<code className="text-gold/70">/v1/models</code>
+							</span>
+						)}
+						{models.kind === "error" && (
+							<span
+								className="text-danger text-[10px] truncate"
+								title={models.message}
+							>
+								Couldn't list models — type a name manually.
+							</span>
+						)}
+					</div>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 						<label className="flex flex-col gap-1.5">
