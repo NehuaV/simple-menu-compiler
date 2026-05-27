@@ -1,4 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from "preact/hooks";
+import { createContext } from "preact";
+import {
+	useState,
+	useEffect,
+	useCallback,
+	useRef,
+	useContext,
+} from "preact/hooks";
 
 // ── Locale → ISO 3166-1 alpha-2 country code for flag-icons ──────────────────
 // Maps language codes (BCP 47-ish) to the country whose flag visually represents
@@ -70,8 +77,8 @@ export function languageDisplayName(code, inLocale = code) {
 // the original fetch Response (with a custom timestamp header) so we can hand
 // the bytes back as a blob URL on repeat visits without re-hitting the network.
 const IMAGE_CACHE_TTL_MS = 5 * 60 * 1000;
-const IMAGE_CACHE_NAME = "menu-compiler-images-v1";
 const TIMESTAMP_HEADER = "x-cached-at";
+const CacheConfigContext = createContext("menu-images-cache");
 
 function hasCacheApi() {
 	return typeof window !== "undefined" && "caches" in window;
@@ -79,12 +86,13 @@ function hasCacheApi() {
 
 /**
  * Open (or create) the image cache.
+ * @param {string} cacheVersionTag
  * @returns {Promise<Cache | null>}
  */
-async function getImageCache() {
+async function getImageCache(cacheVersionTag) {
 	if (!hasCacheApi()) return null;
 	try {
-		return await caches.open(IMAGE_CACHE_NAME);
+		return await caches.open(cacheVersionTag);
 	} catch {
 		return null;
 	}
@@ -94,10 +102,11 @@ async function getImageCache() {
  * Return a blob URL for a fresh cached copy of `url`, or null if missing/stale.
  * Stale entries are evicted as a side effect.
  * @param {string} url
+ * @param {string} cacheVersionTag
  * @returns {Promise<string | null>}
  */
-async function getCachedBlobUrl(url) {
-	const cache = await getImageCache();
+async function getCachedBlobUrl(url, cacheVersionTag) {
+	const cache = await getImageCache(cacheVersionTag);
 	if (!cache || !url) return null;
 	try {
 		const res = await cache.match(url);
@@ -119,8 +128,8 @@ async function getCachedBlobUrl(url) {
  * @param {string} url
  * @returns {Promise<void>}
  */
-async function cacheImage(url) {
-	const cache = await getImageCache();
+async function cacheImage(url, cacheVersionTag) {
+	const cache = await getImageCache(cacheVersionTag);
 	if (!cache || !url) return;
 	try {
 		const res = await fetch(url, { mode: "cors", credentials: "omit" });
@@ -195,6 +204,7 @@ function ProgressiveImage({ src, placeholder, alt, eager = false }) {
 	const [fromCache, setFromCache] = useState(false);
 	const [loaded, setLoaded] = useState(false);
 	const imgRef = useRef(null);
+	const cacheVersionTag = useContext(CacheConfigContext);
 
 	useEffect(() => {
 		if (typeof window === "undefined" || !src) return;
@@ -203,7 +213,7 @@ function ProgressiveImage({ src, placeholder, alt, eager = false }) {
 		let createdBlobUrl = null;
 
 		(async () => {
-			const cached = await getCachedBlobUrl(src);
+			const cached = await getCachedBlobUrl(src, cacheVersionTag);
 			if (cancelled) {
 				if (cached) URL.revokeObjectURL(cached);
 				return;
@@ -214,7 +224,7 @@ function ProgressiveImage({ src, placeholder, alt, eager = false }) {
 				setResolvedSrc(cached);
 				return;
 			}
-			cacheImage(src);
+			cacheImage(src, cacheVersionTag);
 		})();
 
 		return () => {
@@ -657,6 +667,7 @@ export default function MenuApp({
 	menuData = [],
 	initialLocale = "en",
 	restaurantName = "Our Menu",
+	imageCacheVersionTag = "menu-images-cache",
 }) {
 	const allLocales = detectLocales(menuData);
 	const [locale, setLocale] = useState(initialLocale);
@@ -785,7 +796,7 @@ export default function MenuApp({
 	const navSections = sections.filter((s) => s.title);
 
 	return (
-		<>
+		<CacheConfigContext.Provider value={imageCacheVersionTag}>
 			<header className="sticky top-0 z-50 bg-bg/85 backdrop-blur-md border-b border-white/[0.07]">
 				<div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-0 sm:h-16 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-6">
 					<div className="flex items-center gap-2.5 min-w-0">
@@ -852,6 +863,6 @@ export default function MenuApp({
 			{selected && (
 				<Modal item={selected} locale={locale} onClose={closeModal} />
 			)}
-		</>
+		</CacheConfigContext.Provider>
 	);
 }

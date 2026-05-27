@@ -24,6 +24,7 @@ require("@babel/register")({
 	cache: false,
 });
 
+const { randomUUID } = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
@@ -201,8 +202,15 @@ function buildFlagCss(menuData) {
 	const { renderToString } = require("preact-render-to-string");
 	const MenuApp = require("./src/MenuApp.jsx").default;
 
+	const imageCacheVersionTag = `menu-compiler-images-${randomUUID()}`;
+
 	const appHtml = renderToString(
-		h(MenuApp, { menuData, initialLocale, restaurantName }),
+		h(MenuApp, {
+			menuData,
+			initialLocale,
+			restaurantName,
+			imageCacheVersionTag,
+		}),
 	);
 
 	console.log("⚙  Bundling client-side JavaScript…");
@@ -251,9 +259,10 @@ function buildFlagCss(menuData) {
   <div id="app">${appHtml}</div>
 
   <script>
-    window.__MENU_DATA__       = ${JSON.stringify(menuData)};
-    window.__INITIAL_LOCALE__  = ${JSON.stringify(initialLocale)};
-    window.__RESTAURANT_NAME__ = ${JSON.stringify(restaurantName)};
+    window.__MENU_DATA__              = ${JSON.stringify(menuData)};
+    window.__INITIAL_LOCALE__         = ${JSON.stringify(initialLocale)};
+    window.__RESTAURANT_NAME__        = ${JSON.stringify(restaurantName)};
+    window.__IMAGE_CACHE_VERSION_TAG__ = ${JSON.stringify(imageCacheVersionTag)};
   </script>
   <script>${clientJs}</script>
 </body>

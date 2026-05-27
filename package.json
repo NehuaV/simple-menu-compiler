@@ -5,6 +5,7 @@
 	"main": "index.js",
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
+		"compile": "node compiler.js -i sample-menu.json -o dist/index.html -n \"Trattoria Roma\" -l it",
 		"app:dev": "vite",
 		"app:typecheck": "tsc --noEmit -p srcApp/tsconfig.json",
 		"app:build": "tsc --noEmit -p srcApp/tsconfig.json && vite build",
